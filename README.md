@@ -3,6 +3,8 @@
 `list/` フォルダ内のMarkdownファイルを読み込んで表示する、シンプルなフラットファイルCMSです。  
 サーバーサイドは不要で、静的ホスティング（GitHub Pages, Netlify等）で動きます。
 
+**Demo**: https://rashita.github.io/textbox_cms/
+
 ## フォルダ構成
 
 ```
