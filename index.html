@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="サイトの説明文をここに入れてください。">
+    <meta name="author" content="Your Name">
+    <meta name="keywords" content="キーワード1,キーワード2">
+    <title>Site Title</title>
+    <link rel="shortcut icon" href="image/favicon.ico">
+    <link href="css/style.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Mukta:wght@800&family=Poppins:wght@500&display=swap" rel="stylesheet">
+
+<style>
+
+span.linkbtn{
+  color: blue;
+  cursor: pointer;
+}
+
+#body{
+  width: 100%;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif,"Meiryo UI", "メイリオ", "MS UI Gothic", "ヒラギノ角ゴシック";
+  font-weight: bold;
+}
+
+#tophead{
+  text-align: center;
+  width: 100%;
+}
+
+#tophead h1{
+  font-family: 'Mukta', sans-serif;
+  font-size: 52px;
+  border-bottom: 1px solid black;
+  width: 600px;
+  margin: 0 auto;
+  cursor: pointer;
+}
+
+#mainArea{
+  width:50%;
+  margin:0 auto;
+  font-family: "Open Sans",Helvetica,Arial,"Hiragino Sans",sans-serif;
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+#mainArea blockquote{
+  background-color: whitesmoke;
+  font-style: italic;
+  padding:1.5em;
+}
+
+.area-copyright{
+  text-align: center;
+}
+
+.hiistory-box{
+  background-color: #fafafa;
+  margin-top:2em;
+  padding:1em;
+}
+
+.hiistory-box>h3{
+  font-size:0.8em;
+}
+
+.hiistory-box>ul{
+  font-size:0.8em;
+}
+
+code{
+  background: black;
+  color: white;
+  padding: 1em;
+  width: 100%;
+  display: block;
+}
+
+img[alt="Image from Gyazo"]{
+  width: 100%;
+}
+
+@media screen and (max-width:768px) {
+  #tophead h1{
+    width: 200px;
+    font-size: 42px;
+  }
+  #mainArea{
+    width:90%;
+  }
+  #mainArea p{
+    line-height: 1.9;
+  }
+  #mainArea blockquote{
+    margin: 0.5em 0;
+    font-size: 0.9em;
+  }
+}
+
+</style>
+
+<script src="js/marked.min.js"></script>
+
+</head>
+
+<body>
+
+<nav id="tophead">
+  <h1 id="sitelogo">Site Title</h1>
+</nav>
+
+<div id="mainArea"></div>
+
+<div class="area-copyright">
+  <span>Copyright ©2025 Your Name All rights reserved.</span>
+</div>
+
+</body>
+<script>
+
+// ================================================
+// 設定ブロック
+// ここだけ書き換えれば基本的な動作をカスタマイズできます
+// ================================================
+
+// サイトが動くオリジン（本番URL と ローカル開発URL を列挙する）
+// 末尾は必ず "?" にしてください
+const SITE_ORIGINS = [
+  "https://example.com/?",    // 本番URL
+  "http://localhost:8000/?"   // ローカル開発URL
+];
+
+// トップページとして使うファイル（list/ フォルダ内のMDファイル）
+const INDEX_FILE = "list/index.md";
+
+// MDファイル内の <script> タグを実行する機能
+// true  : 有効（MDにJavaScriptを埋め込んで動かしたい場合）
+// false : 無効（セキュリティ重視・スクリプト不要の場合）
+const ENABLE_MD_SCRIPT = false;
+
+// ================================================
+// 以下はロジック本体です
+// ================================================
+
+// URLからMDファイルパスを導出する
+function getFileFromURL(href) {
+  let decoded = decodeURI(href);
+  for (const origin of SITE_ORIGINS) {
+    decoded = decoded.replace(origin, "");
+  }
+  decoded = decoded.replace(/#.*/, "").replace(/=.*/, "");
+
+  // パラメータが残っていればそれをファイル名に、なければindexへ
+  if (!decoded || decoded.startsWith("http")) {
+    return INDEX_FILE;
+  }
+  return "list/" + decoded + ".md";
+}
+
+// ページを描画してタイトル・履歴を更新する
+// pushHistory=true  → pushState（通常リンク）
+// pushHistory=false → replaceState（popstate経由）
+function navigateTo(file, pushHistory = true) {
+  mainPage.drawPage(file);
+
+  const pureTitle = file.replace(/list\/(.*)\.md/, "$1");
+  document.title = pureTitle + " | " + document.getElementById("sitelogo").innerText;
+
+  const url = (pureTitle === "index") ? "./" : "?" + encodeURIComponent(pureTitle);
+
+  if (pushHistory) {
+    history.pushState({ file }, document.title, url);
+  } else {
+    history.replaceState({ file }, document.title, url);
+  }
+}
+
+// ファイルを読み込むオブジェクト
+function loadedFile(target) {
+  this.target = target;
+  this.drawPage = function(file) {
+    const resultArea = document.getElementById(this.target);
+    const targetarea = this.target;
+
+    fetch(file.normalize("NFC"), { cache: "no-store", method: "get" })
+      .then(response => {
+        if (!response.ok) throw new Error("fetch failed: " + file);
+        return response.text();
+      })
+      .then(text => {
+        resultArea.innerHTML = replaceLinkBtn(marked(text));
+        setOnClickEvent(targetarea);
+        if (ENABLE_MD_SCRIPT) {
+          readScript(targetarea);
+        }
+        window.scrollTo({ top: 0 });
+      })
+      .catch(err => {
+        console.error(err);
+        alert(err);
+      });
+  };
+}
+
+// ファイルオブジェクトの実体（メイン領域用）
+const mainPage = new loadedFile("mainArea");
+
+// [[リンク]] をクリッカブルなボタンに置換
+function replaceLinkBtn(text) {
+  return text.replace(/\[\[(.*?)\]\]/g, '<span class="linkbtn">$1</span>');
+}
+
+// 読み込んだMD内の <script> を実行する（ENABLE_MD_SCRIPT が true の場合のみ呼ばれる）
+function readScript(targetarea) {
+  const addScript = document.querySelector("#" + targetarea + " > script");
+  if (addScript) {
+    const old = document.getElementById("temp");
+    if (old) old.remove();
+
+    const loadscript = document.createElement("script");
+    loadscript.id = "temp";
+    loadscript.innerHTML = addScript.innerHTML;
+    document.body.appendChild(loadscript);
+  }
+}
+
+// .linkbtn にクリックイベントを設定
+function setOnClickEvent(targetarea) {
+  const selector = (targetarea === "body") ? "body" : "#" + targetarea;
+  const btnObjs = document.querySelectorAll(selector + " .linkbtn");
+
+  btnObjs.forEach(btn => {
+    btn.onclick = function() {
+      const name = (btn.nodeName === "IMG")
+        ? btn.getAttribute("alt")
+        : btn.innerText;
+      navigateTo("list/" + name + ".md");
+    };
+  });
+}
+
+// 初回読み込み
+window.addEventListener("load", function() {
+  const file = getFileFromURL(location.href);
+  // 初回はreplaceStateで現在のエントリを上書き（履歴を積まない）
+  navigateTo(file, false);
+
+  document.getElementById("sitelogo").onclick = function() {
+    navigateTo(INDEX_FILE);
+  };
+});
+
+// 戻る／進むボタン対応
+window.addEventListener("popstate", function(e) {
+  // stateにfileが入っていればそれを使い、なければURLから導出
+  const file = (e.state && e.state.file)
+    ? e.state.file
+    : getFileFromURL(location.href);
+  navigateTo(file, false);
+});
+
+</script>
+</html>
